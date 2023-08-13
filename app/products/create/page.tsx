@@ -13,12 +13,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,7 +36,8 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import Navbar from "@/components/Navbar"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import axios from "axios"
 
 
 
@@ -66,6 +62,16 @@ const profileFormSchema = z.object({
             })
         )
         .optional(),
+    images: z
+        .array(
+            z.object({
+                value: z.string().url({ message: "Please enter a valid URL." }),
+            })
+        )
+        .refine((images) => images.length > 0, {
+            message: "Please upload at least one image.",
+        })
+        .optional(),
 })
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
@@ -76,6 +82,7 @@ const defaultValues: Partial<ProfileFormValues> = {
         { value: "https://shadcn.com" },
         { value: "http://twitter.com/shadcn" },
     ],
+    images: [],
 }
 
 
@@ -83,10 +90,45 @@ const defaultValues: Partial<ProfileFormValues> = {
 
 
 function ProfileForm() {
-
-
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [formData, setFormData] = useState({ name: '' });
     const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [categoryOptions, setCategoryOptions] = useState([]);
 
+    const [categoryName, setCategoryName] = useState('');
+    useEffect(() => {
+        getCategoires();
+    }, []);
+
+    const getCategoires = () => {
+        axios.get("/api/auth/category/getCategories")
+            .then(response => {
+                console.log(response)
+                setCategoryOptions(response.data);
+                console.log(categoryOptions)
+            })
+            .catch(error => {
+                console.error('Error fetching categories:', error);
+            });
+    }
+
+    const handleAddCategory = async () => {
+        try {
+            await axios.post("/api/auth/category/create", {
+                name: categoryName,
+            }).then(response => {
+                getCategoires();
+            });
+
+            setIsDialogOpen(false); // Cerrar el diálogo
+            console.log('Categoría agregada exitosamente');
+            console.log(categoryName);
+            setCategoryName('');
+ 
+        } catch (error) {
+            console.error('Error al agregar categoría:', error);
+        }
+    };
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
 
@@ -102,13 +144,13 @@ function ProfileForm() {
         console.log(files)
     };
 
-    
+
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileFormSchema),
         defaultValues,
         mode: "onChange",
     })
- 
+
     function onSubmit(data: ProfileFormValues) {
         toast({
             title: "You submitted the following values:",
@@ -120,6 +162,7 @@ function ProfileForm() {
         })
         console.log(JSON.stringify(data, null, 2))
     }
+
 
     return (
         <div className='flex h-screen color-w bg-background'>
@@ -157,22 +200,24 @@ function ProfileForm() {
                                             <img src={URL.createObjectURL(file)} className="w-24 h-24" />
                                         </div>
                                     ))}
-                                    <div
-                                        onDrop={handleDrop}
+                                    <div onDrop={handleDrop}
                                         onDragOver={e => e.preventDefault()}
-                                        className="w-30 h-30 p-2 text-center border-2 border-dashed border-border"
-                                    >
-                                        <p>Drag images here or select from your device</p>
-
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleFileInputChange}
-                                        />
-
-
+                                        className="w-24 h-24 p-2 text-center border-2 border-dashed border-border">
+                                        <label className="flex items-center justify-center pt-4 text-gray-600 ">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25H7.5a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H15m0-3l-3-3m0 0l-3 3m3-3V15" />
+                                            </svg>
+                                            <p>Upload</p>
+                                            <input
+                                                className="h-24 w-24 opacity-0  absolute cursor-pointer border-2"
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handleFileInputChange}
+                                            />
+                                        </label>
                                     </div>
+
                                 </div>
 
                             </FormItem>
@@ -190,44 +235,62 @@ function ProfileForm() {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="Phone">Phone</SelectItem>
-                                            <SelectItem value="PC">PC</SelectItem>
-                                            <SelectItem value="TV">TV</SelectItem>
+                                            {categoryOptions.map((option) => (
+                                                <SelectItem key={option._id} value={option.name}>
+                                                    {option.name}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>
-                                        You can add a new also
-                                    </FormDescription>
+                                    <FormDescription>You can also add a new category.</FormDescription>
+
                                     <Dialog>
-                                        <DialogTrigger><Button type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="mt-2">Add Category</Button></DialogTrigger>
+                                        <DialogTrigger>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="mt-2"
+                                                onClick={() => setIsDialogOpen(true)}
+                                            >
+                                                Add Category
+                                            </Button>
+                                        </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
                                                 <DialogTitle>Create category</DialogTitle>
                                                 <DialogDescription>
-                                                    <FormItem>
-                                                        <FormLabel>Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input className="" placeholder="" />
-                                                        </FormControl>
-                                                        <FormDescription>
-                                                            This is the name of the product. Is the name that will be displayed in the store
-                                                        </FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                    <div className="flex justify-end">
+                                                    <form>
+                                                        <FormItem>
+                                                            <FormLabel>Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    className=""
+                                                                    placeholder=""
+                                                                    value={categoryName}
+                                                                    onChange={(e) =>
+                                                                        setCategoryName(e.target.value)
+                                                                    }
+                                                                />
+                                                            </FormControl>
+                                                            <FormDescription>
+                                                                This is the name of the product. Is the name that will be displayed in the store
+                                                            </FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
                                                         <Button
                                                             type="button"
                                                             variant="default"
                                                             size="sm"
-                                                            className="mt-2"
-                                                            onClick={() => append({ value: "" })}
-                                                        >Add category
+                                                            onClick={() => {
+                                                                handleAddCategory();
+
+                                                            }}
+                                                        >
+                                                            Add category
                                                         </Button>
 
-                                                    </div>
+                                                    </form>
                                                 </DialogDescription>
                                             </DialogHeader>
                                         </DialogContent>

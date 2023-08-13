@@ -2,14 +2,14 @@ import { Schema, model,models } from "mongoose";
 
 interface IProduct {
     name: String,
-    images: File[],
+    images: String[],
     category: String,
     descrption: String,
 }
 
 const productSchema = new Schema<IProduct>({
     name: String,
-    images: File[],
+    images: String ,
     category: String,
     descrption: String,
 });
