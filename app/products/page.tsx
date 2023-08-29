@@ -42,54 +42,22 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import axios from "axios";
 
 
 export type Product = {
-    id: string
-    price: number
-    status: "Out of stock" | "In stock"
-    category: string
-    name: string
+    name: String,
+    price: Number,
+    images: String[],
+    category: String,
+    stock: Number,
+    descrption: String,
 
 }
 
-const data: Product[] = [
-    {
-        id: "m5gr84i9",
-        price: 316,
-        status: "Out of stock",
-        category: "phone",
-        name: "lg",
-    },
-    {
-        id: "3u1reuv4",
-        price: 242,
-        status: "In stock",
-        category: "phone",
-        name: "Iphone",
-    },
-    {
-        id: "derv1ws0",
-        price: 837,
-        status: "In stock",
-        category: "phone",
-        name: "Samsung",
-    },
-    {
-        id: "5kma53ae",
-        price: 874,
-        status: "Out of stock",
-        category: "Iphone",
-        name: "Xiaomi",
-    },
-    {
-        id: "bhqecj4p",
-        price: 721,
-        status: "In stock",
-        category: "phone",
-        name: "Samsung",
-    },
-];
+const data: Product[] = [];
+ 
+
 
 export const columns: ColumnDef<Product>[] = [
     {
@@ -112,10 +80,10 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "status",
-        header: "Status",
+        accessorKey: "stock",
+        header: "Stock",
         cell: ({ row }) => (
-            <div className="capitalize">{row.getValue("status")}</div>
+            <div className="capitalize">{row.getValue("stock")}</div>
         ),
     },
     {
@@ -157,8 +125,8 @@ export const columns: ColumnDef<Product>[] = [
             const payment = row.original;
 
             return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                <DropdownMenu >
+                    <DropdownMenuTrigger asChild className="">
                         <Button variant="ghost" className="h-8 w-8 p-0">
                             <span className="sr-only">Open menu</span>
                             <DotsHorizontalIcon className="h-4 w-4" />
@@ -175,16 +143,17 @@ export const columns: ColumnDef<Product>[] = [
 ];
 
 function DataTableDemo() {
-    const [sorting, setSorting] = React.useState<SortingState>([])
+    const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
-    )
+    );
     const [columnVisibility, setColumnVisibility] =
-        React.useState<VisibilityState>({})
-    const [rowSelection, setRowSelection] = React.useState({})
+        React.useState<VisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState({});
+    const [data, setData] = React.useState<Product[]>([]); // State to hold the data
 
     const table = useReactTable({
-        data,
+        data, // Now using the data state to populate the table
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -200,19 +169,28 @@ function DataTableDemo() {
             columnVisibility,
             rowSelection,
         },
-    })
+    });
 
-
+    React.useEffect(() => {
+        async function fetchData() {
+            try {
+                const response = await axios.get<Product[]>('/api/auth/product/getAll'); // Reemplaza con la URL de la API real
+                const productsData: Product[] = response.data;
+                setData(productsData); // Update the state with new data
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+        fetchData();
+    }, []);
     return (
         <div className=' min-h-screen flex ' >
             <Navbar></Navbar>
 
             <div className="w-full  p-4">
                 <div>
-                    <p>23 Products</p>
-
+                    <h1 className="font-medium text-2xl">Products</h1>
                 </div>
-
                 <div className="flex items-center py-4">
                     <Input
                         placeholder="Filter products..."
@@ -249,7 +227,7 @@ function DataTableDemo() {
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <Link href="/products/create" className="ml-auto">
-                        <Button className=" px-2 pr-1">
+                        <Button className=" px-2 py-1">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="p-0 mr-1 w-5 h-5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
