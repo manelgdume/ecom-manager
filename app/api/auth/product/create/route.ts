@@ -24,9 +24,9 @@ export async function POST(request: Request) {
 
   try {
     await product.save()
-    return NextResponse.json({ message: "product created" }, { status: 200 })
+    return NextResponse.json({ message: "Product created" }, { status: 200 })
   }
   catch {
-    return NextResponse.json({ error: 'Unknown error' }, { status: 400 })
+    return NextResponse.json({ error: 'Unknown error: There was a problem with your request.' }, { status: 400 })
   }
 } 

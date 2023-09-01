@@ -28,7 +28,8 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/components/ui/use-toast"
+import { ToastAction } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/use-toast"
 import {
     Dialog,
     DialogContent,
@@ -65,14 +66,26 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>
 interface Category {
     name: string;
 }
-
+const initialValues = {
+    name: '',
+    price: '',
+    images: [],
+    category: '',
+    stock: '',
+    description: '',
+};
 
 function ProfileForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [isFailed, setIsFailed] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const { toast } = useToast()
+    const [formData, setFormData] = useState(initialValues);
 
+    const resetForm = () => {
+        setFormData(initialValues);
+    };
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [categoryOptions, setCategoryOptions] = useState<Array<Category>>([]);
@@ -91,8 +104,8 @@ function ProfileForm() {
     }
     const handleReload = () => {
         window.location.reload();
-      };
-    
+    };
+
     const handleAddCategory = async () => {
         try {
             await axios.post("/api/auth/category/create", {
@@ -148,15 +161,22 @@ function ProfileForm() {
             }
         }
     }
-
+    function resettForm() {
+        form.setValue('name', "");
+        form.setValue('price', "");
+        form.setValue('images', "[]");
+        form.setValue('category', "");
+        form.setValue('stock', "");
+        form.setValue('description', "");
+        setImageFiles([])
+    }
 
     async function onSubmit(data: ProfileFormValues) {
+        let response: any
         try {
-            setIsLoading(true); // Comienza la animación de carga
-
+            setIsLoading(true); // Comienza la animación de carga 
             await uploadImages(imageFiles, data.name);
-
-            const response = await axios.post("/api/auth/product/create", {
+            response = await axios.post("/api/auth/product/create", {
                 name: data.name,
                 price: data.price,
                 category: data.category,
@@ -164,41 +184,36 @@ function ProfileForm() {
                 stock: data.stock,
                 description: data.description,
             })
-            setIsSuccess(true);
-            if (response.status === 200) {
-                setIsSuccess(true);
-            } else {
-                const errorResponse = response.data.error; // Accede al mensaje de error
-                setErrorMessage(errorResponse || 'Error creating product');
-            }
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setIsLoading(false); // Finaliza la animación de carga
+            setIsLoading(false)
+            toast({
+                action: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                ,
+                title: "Product created",
+                description: `Name: ${data.name}, Description: ${data.description}`,
+            });
+            resettForm();
         }
-    }
+        catch (e) {
 
+            setIsLoading(false)
+            toast({
+                variant: "destructive",
+                title: "Uh oh! Something went wrong.",
+
+                action: <ToastAction altText="Close" >Close</ToastAction>,
+            })
+        }
+        setIsLoading(false)
+
+    }
     return (
         <div className=' min-h-screen flex ' >
             {isLoading ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="animate-spin rounded-full h-5 w-5 border-t-4 border-blue-500 mr-2"></div>Loading
                 </div>
-            ) : isSuccess ? (
-                <AlertDialog open={isSuccess}  >
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Product Created</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            The product has been created successfully. You want to create another or see the table of products?
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <Link href={"/products"}><AlertDialogCancel>Go back</AlertDialogCancel></Link>
-                            <AlertDialogAction onClick={handleReload}>Create</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
             ) : isFailed ? (
                 <div className="text-center mt-4">
                     <p>{errorMessage}</p>
@@ -208,7 +223,7 @@ function ProfileForm() {
             <Form {...form} >
                 <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-8 p-4">
                     <h1 className="font-medium text-2xl">Create Product</h1>
-                     
+
                     <FormField
                         control={form.control}
                         name="name"
@@ -216,7 +231,7 @@ function ProfileForm() {
                             <FormItem>
                                 <FormLabel>Name</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Your name" {...field} />
+                                    <Input placeholder="Your name" {...field} defaultValue={form.watch('name', '')} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -386,8 +401,7 @@ function ProfileForm() {
                                 <FormMessage />
                             </FormItem>
                         )} />
-                    <Button type="submit">Create product</Button>
-
+                    <Button type="submit" >Create product</Button>
                 </form>
             </Form>
         </div>
