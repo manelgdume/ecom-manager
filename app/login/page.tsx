@@ -4,9 +4,16 @@ import React, { FormEvent, useState } from 'react';
 import axios from 'axios';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { cn } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import Link from 'next/link';
 
 function LoginPage() {
-    const [error, setError]=useState("");
+    const [error, setError] = useState("");
     const router = useRouter()
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -15,14 +22,14 @@ function LoginPage() {
         const formData = new FormData(e.currentTarget)
 
         try {
-            const res= await signIn("credentials",{
+            const res = await signIn("credentials", {
                 email: formData.get("email"),
                 password: formData.get("password"),
                 redirect: false
             })
             console.log(res)
-            if(res?.error) return setError(res.error)
-            if(res?.ok) return router.push("/dashboard")
+            if (res?.error) return setError(res.error)
+            if (res?.ok) return router.push("/dashboard")
         } catch (error) {
             console.log(formData);
             console.error('Error:', error);
@@ -30,28 +37,103 @@ function LoginPage() {
     };
 
     return (
+
         <div>
-            <h1>Login</h1>
-            <form onSubmit={handleSubmit}>
-                <input
-                    className="border border-sky-500"
-                    type="email"
-                    placeholder="email"
-                    name="email"
-                    required
-                /><br />
-                <input
-                    className="border border-sky-500"
-                    type="password"
-                    placeholder="password"
-                    name="password"
-                    required
-                /><br />
-                <button type="submit" className="border border-sky-500">Login</button>
-                <div id="alert"></div>
-            </form>
+            <div className="md:hidden">
+
+            </div>
+            <div className="container relative hidden h-screen	 flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+                <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
+                    <div className="absolute inset-0 bg-zinc-900" />
+                    <div className="relative z-20 flex items-center text-lg font-medium">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="mr-2 h-6 w-6"
+                        >
+                            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+                        </svg>
+                        Acme Inc
+                    </div>
+                    <div className="relative z-20 mt-auto">
+                        <blockquote className="space-y-2">
+                            <p className="text-lg">
+                                &ldquo;This library has saved me countless hours of work and
+                                helped me deliver stunning designs to my clients faster than
+                                ever before.&rdquo;
+                            </p>
+                            <footer className="text-sm">Sofia Davis</footer>
+                        </blockquote>
+                    </div>
+                </div>
+                <div className="lg:p-8">
+                    <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+                        <div className="flex flex-col space-y-2 text-center">
+                            <h1 className="text-2xl font-semibold tracking-tight">
+                                Login
+                            </h1>
+                            <p className="text-sm text-muted-foreground">
+                                Sign in to your account
+                            </p>
+                        </div>
+                        <form onSubmit={handleSubmit}>
+                            <Input
+                                className='mb-2'
+                                name="email"
+                                placeholder="name@example.com"
+                                type="email"
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                autoCorrect="off"
+                            />
+                            <Label className="sr-only" htmlFor="email" >
+                                Email
+                            </Label>
+                            <Input
+                                name="password"
+                                placeholder="password"
+                                type="password"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                required
+                            />
+                            <Label className="sr-only" htmlFor="password" >
+                                ********
+                            </Label>
+
+                            <Button type="submit" variant="outline" className='mt-2 w-full'>
+                                Sign In with Email
+                            </Button>
+
+                        </form>
+                        <p className="px-8 text-center text-sm text-muted-foreground">
+                            By clicking continue, you agree to our{" "}
+                            <Link
+                                href="/terms"
+                                className="underline underline-offset-4 hover:text-primary"
+                            >
+                                Terms of Service
+                            </Link>{" "}
+                            and{" "}
+                            <Link
+                                href="/privacy"
+                                className="underline underline-offset-4 hover:text-primary"
+                            >
+                                Privacy Policy
+                            </Link>
+                            .
+                        </p>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        
+
     );
 }
 

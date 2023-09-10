@@ -6,7 +6,7 @@ interface IProduct {
     images: String[],
     category: String,
     stock: Number,
-    descrption: String,
+    description: String,
 }
 
 const productSchema = new Schema<IProduct>({
@@ -15,7 +15,7 @@ const productSchema = new Schema<IProduct>({
     images: Array,
     category: String,
     stock: Number,
-    descrption: String,
+    description: String,
 });
 const Product = models.Product || model('Product', productSchema)
 export default Product;

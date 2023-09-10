@@ -4,14 +4,15 @@ import { connectDB } from '@/lib/mongodb';
 
 
 export async function POST(request: Request) {
-    const { name } = await request.json();
+    const { id } = await request.json();
 
     await connectDB()
     try {
-        const productFound = await Product.findOne({ name })
-
+        console.log(id)
+        const productFound = await Product.findOne({ _id: id })
+        console.log(productFound)
         if (productFound) {
-            return NextResponse.json({ message: 'Product already exist' }, { status: 200 })
+            return NextResponse.json({ productFound}, { status: 200 })
         }
 
         else {

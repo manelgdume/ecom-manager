@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useFieldArray, useForm } from "react-hook-form"
 import { initializeApp } from "firebase/app";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 import { storage } from "@/lib/firebase"
 import * as z from "zod"
@@ -76,7 +76,8 @@ const initialValues = {
     description: '',
 };
 
-function ProfileForm() {
+function ProfileForm({ params }: { params: { id: string } }) {
+
     const [isLoading, setIsLoading] = useState(false);
     const [showAddCategory, setShowAddCategory] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -85,17 +86,44 @@ function ProfileForm() {
     const [errorMessage, setErrorMessage] = useState("");
     const { toast } = useToast()
     const [formData, setFormData] = useState(initialValues);
-
+    console.log(params.id[0])
     const resetForm = () => {
         setFormData(initialValues);
     };
+    const [urls, setUrls] = useState<String[]>([]);
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [categoryOptions, setCategoryOptions] = useState<Array<Category>>([]);
     const [categoryName, setCategoryName] = useState('');
+    const [productData, setProductData] = useState<ProfileFormValues | null>(null);
+    let urlstoDelete: String[] = []
+
     useEffect(() => {
+        getProductData();
         getCategoires();
     }, []);
+
+    const getProductData = () => {
+        axios
+            .post("/api/auth/product/getProduct", {
+                id: params.id[0]
+            })
+            .then(async (response) => {
+                console.log(response.data.productFound)
+                setUrls(response.data.productFound.images)
+                setProductData(response.data.productFound);
+                form.setValue('name', response.data.productFound.name.toString());
+                form.setValue('price', response.data.productFound.price.toString());
+                form.setValue('images', response.data.productFound.images.toString());
+                form.setValue('category', response.data.productFound.category.toString());
+                form.setValue('stock', response.data.productFound.stock.toString());
+                form.setValue('description', response.data.productFound.description.toString());
+                 
+            })
+            .catch((error) => {
+                console.error('Error fetching product data:', error);
+            });
+    };
     const getCategoires = () => {
         axios.get("/api/auth/category/getCategories")
             .then(response => {
@@ -168,21 +196,28 @@ function ProfileForm() {
     let jsonResult: string[]  = [];
 
     async function uploadImages(imageFiles: File[], name: any): Promise<void> {
-
+        let i = 0;
         for (const file of imageFiles) {
             const storageRef = ref(storage, 'images/' + name + "_" + file.name);
 
             try {
                 await uploadBytes(storageRef, file);
-    
-                const downloadURL = await getDownloadURL(storageRef);
-                jsonResult.push(downloadURL)
 
+                const downloadURL = await getDownloadURL(storageRef);
+                jsonResult[i] = downloadURL;
+                i++;
                 console.log('Imagen subida correctamente:', file.name);
             } catch (error) {
                 console.error('Error al subir la imagen:', error);
             }
         }
+    }
+    async function deleteImages(urlstoDelete: String[]): Promise<void> {
+        urlstoDelete.forEach(async url => {
+            let urlRef = ref(storage, url.toString());
+            await deleteObject(urlRef)
+        });
+
     }
     function resettForm() {
         form.setValue('name', "");
@@ -206,47 +241,41 @@ function ProfileForm() {
         }
         setImageFiles(updatedImageFiles)
     };
+
+    const handleDeleteURLImage = (url: string) => {
+        let urlsAux = urls.filter(item => item !== url);
+        setUrls(urlsAux)
+        urlstoDelete.push(url)
+    }
+
     async function onSubmit(data: ProfileFormValues) {
         let response: any
-        console.log(imageFiles)
+
+
+
+        setIsLoading(true);
         try {
-            setIsLoading(true);
-            console.log(data.name)
-            let exist = await axios.post("/api/auth/product/get", {
+            await uploadImages(imageFiles, data.name);
+            await deleteImages(urlstoDelete)
+              
+            let urlsImages = jsonResult.concat(urls.map(String))
+            response = await axios.post("/api/auth/product/update", {
+                id: params.id[0],
                 name: data.name,
+                price: data.price,
+                category: data.category,
+                images: urlsImages,
+                stock: data.stock,
+                description: data.description,
             })
-            if (exist.data.message === "Product already exist") {
-                console.log(exist.data.message)
-                toast({
-
-                    variant: "destructive",
-                    title: "Product already exists.",
-
-                    action: <ToastAction altText="Close" >Close</ToastAction>,
-                })
-            }
-            else {
-                console.log(exist.data.message)
-                await uploadImages(imageFiles, data.name);
-                response = await axios.post("/api/auth/product/create", {
-                    name: data.name,
-                    price: data.price,
-                    category: data.category,
-                    images: jsonResult,
-                    stock: data.stock,
-                    description: data.description,
-                })
-                setIsLoading(false)
-                toast({
-                    title: "Product created",
-                    description: `Name: ${data.name}, Description: ${data.description}`,
-                    action: <ToastAction altText="Close"  > <Link href={"/products"}> See products</Link> </ToastAction>
-                });
-                resettForm();
-            }
+            setIsLoading(false)
+            toast({
+                title: "Product updated",
+                description: `Name: ${data.name}, Description: ${data.description}`,
+                action: <ToastAction altText="Close"  > <Link href={"/products"}> See products</Link> </ToastAction>
+            });
         }
         catch (e) {
-
             setIsLoading(false)
             console.log(e)
             toast({
@@ -281,7 +310,7 @@ function ProfileForm() {
                 ) : null}
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-8 p-4">
-                        <h1 className="font-medium text-2xl">Create Product</h1>
+                        <h1 className="font-medium text-2xl">Edit Product</h1>
 
                         <FormField
                             control={form.control}
@@ -290,7 +319,7 @@ function ProfileForm() {
                                 <FormItem>
                                     <FormLabel>Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Your name" {...field} defaultValue={form.watch('name', '')} />
+                                        <Input placeholder="Your name" {...field} defaultValue={productData?.name || ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -302,7 +331,7 @@ function ProfileForm() {
                                 <FormItem>
                                     <FormLabel>Price</FormLabel>
                                     <FormControl>
-                                        <Input type="number" placeholder="Price of the product" {...field} />
+                                        <Input type="number" placeholder="Price of the product" {...field} defaultValue={productData?.price || ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -323,6 +352,34 @@ function ProfileForm() {
                                         </FormDescription>
                                         <FormMessage />
                                         <div className="flex text-sm">
+                                            <div className="flex">
+                                                {urls.map((url, index) => ( 
+                                                    <div key={index} className="relative">
+                                                        <button
+                                                            onClick={() => handleDeleteURLImage(url.toString())}
+                                                            className="absolute top-0 left-0 w-5 h-5 bg-secondary rounded-full mr-2 mb-5 flex items-center justify-center border-[1px] border-slate-800"
+                                                        >
+                                                            <svg
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                strokeWidth={1.5}
+                                                                stroke="currentColor"
+                                                                className="w-6 h-6 text-slate-800"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+
+                                                        <img
+                                                            src={url.toString()}
+                                                            className="w-24 h-24 mt-1"
+                                                            alt={`Image ${index}`}
+                                                        />
+                                                    </div>
+                                                ))}
+
+                                            </div>
                                             {imageFiles.map((file, index) => (
                                                 <div key={index} className="relative">
                                                     <button
@@ -372,6 +429,7 @@ function ProfileForm() {
                                                 </label>
                                             </div>
                                         </div>
+
                                     </FormItem>
                                 </div>
                             )}
@@ -383,10 +441,10 @@ function ProfileForm() {
                             render={({ field }) => (
                                 <FormItem className="mb-0">
                                     <FormLabel>Category</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} >
                                         <FormControl>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select a category" />
+                                                <SelectValue placeholder={productData?.category} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -399,10 +457,8 @@ function ProfileForm() {
                                     </Select>
                                     <FormDescription>You can also add a new category.</FormDescription>
 
-
                                 </FormItem>
                             )} />
-
                         <div>
                             <Dialog>
                                 <DialogTrigger>
@@ -478,7 +534,7 @@ function ProfileForm() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                        <Button type="submit" >Create product</Button>
+                        <Button type="submit" >Edit product</Button>
                     </form>
                 </Form>
             </div>
